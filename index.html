@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Heart Arrow Escape</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="ui-bar">
+      <div class="level">LEVEL <span id="level-display">1</span></div>
+      <div class="hearts">❤️❤️❤️</div>
+    </div>
+
+    <div class="game-container">
+      <div id="grid" class="grid"></div>
+
+      <div id="win-modal" class="modal">
+        <h2>Level Clear!</h2>
+        <p>Perfect Heart!</p>
+        <button onclick="nextLevel()">Next Level</button>
+      </div>
+
+      <div id="gameover-modal" class="modal">
+        <h2 style="color: var(--danger)">Out of Hearts!</h2>
+        <button onclick="restartLevel()">Try Again</button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

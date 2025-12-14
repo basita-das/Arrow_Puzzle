@@ -1,0 +1,171 @@
+:root {
+    --bg-color: #1a1a1a;
+    --arrow-straight: #ffcc00; /* Yellow */
+    --arrow-curve: #00e5ff;    /* Cyan */
+    --danger: #ff6b6b;
+    --text-color: #f0f0f0;
+    --tile-size: 55px; 
+    --gap: 5px;
+}
+
+* {
+    box-sizing: border-box;
+    touch-action: manipulation;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+.ui-bar {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 450px;
+    padding: 20px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.hearts { color: var(--danger); letter-spacing: 5px; }
+.level { color: var(--arrow-curve); text-transform: uppercase; }
+
+.game-container {
+    position: relative;
+    padding: 20px;
+}
+
+.grid {
+    display: grid;
+    gap: var(--gap);
+    position: relative;
+    margin: auto;
+}
+
+.cell {
+    width: var(--tile-size);
+    height: var(--tile-size);
+    background-color: #333;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    /* Visible overflow allows arrows to stick out visually */
+    overflow: visible; 
+}
+
+/* Empty slots are invisible and uninteractable */
+.cell.empty {
+    background-color: transparent;
+    pointer-events: none;
+}
+
+/* --- Arrow Wrapper --- */
+.arrow-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Smooth rotation transition */
+    transition: transform 0.2s ease-out;
+}
+
+/* --- SVG Styling --- */
+.arrow-svg {
+    width: 90%; 
+    height: 90%;
+    filter: drop-shadow(0px 4px 0px rgba(0,0,0,0.3));
+    transition: filter 0.2s;
+    /* Fix for Safari flickering */
+    backface-visibility: hidden;
+}
+
+.arrow-container:hover .arrow-svg {
+    filter: drop-shadow(0px 6px 0px rgba(0,0,0,0.5)) brightness(1.2);
+    transform: scale(1.05);
+}
+
+/* Fill colors */
+.type-straight path { fill: var(--arrow-straight); }
+.type-curve path { fill: var(--arrow-curve); }
+
+/* --- Directional Rotations (Visual) --- */
+/* The logic assumes 0=Up. The SVGs are drawn pointing Up. */
+.arrow-container[data-dir="0"] { transform: rotate(-90deg); } /* Up */
+.arrow-container[data-dir="1"] { transform: rotate(0deg); }   /* Right */
+.arrow-container[data-dir="2"] { transform: rotate(90deg); }  /* Down */
+.arrow-container[data-dir="3"] { transform: rotate(180deg); } /* Left */
+
+/* --- Flying Animation --- */
+.arrow-container.flying {
+    /* Ease-in makes it start slow and accelerate out */
+    transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100; /* Ensure it flies ABOVE neighbors */
+}
+
+/* --- Shake Animation (Error) --- */
+.arrow-container.shake {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0) var(--rotation); }
+    20%, 80% { transform: translate3d(2px, 0, 0) var(--rotation); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0) var(--rotation); }
+    40%, 60% { transform: translate3d(4px, 0, 0) var(--rotation); }
+}
+
+/* Modal Styles */
+.modal {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    border-radius: 20px;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.modal.active { visibility: visible; opacity: 1; }
+.modal h2 { font-size: 2rem; margin-bottom: 10px; color: white; }
+.modal p { color: #aaa; margin-bottom: 30px; }
+
+button {
+    background: var(--arrow-curve);
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    color: #000;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 4px 0px #3aa8a0;
+    transition: transform 0.1s;
+}
+button:active { transform: translateY(4px); box-shadow: none; }
+
+@media (max-width: 500px) {
+    :root { --tile-size: 11vw; --gap: 1.5vw; }
+    .ui-bar { font-size: 1rem; padding: 10px; }
+}
