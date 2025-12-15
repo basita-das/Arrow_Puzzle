@@ -15,7 +15,11 @@ const COLS = HEART_SHAPE[0].length;
 const TYPE_STRAIGHT = 0;
 const TYPE_CURVE = 1;
 
+// Base message to reveal across the heart as arrows leave
+const BASE_MESSAGE = "HAVE A GOOD DAY KEEP SMILING AND SHINING";
+
 let gridData = [];
+let messageGrid = [];
 let currentLevel = 1;
 let hearts = 3;
 let isAnimating = false;
@@ -80,23 +84,10 @@ function startLevel(lvl) {
   loseModal.classList.remove("active");
   isAnimating = false;
 
-  // Retry generation until we find a layout that FILLS the board
-  // and is mathematically solvable.
-  // Add safety limit to prevent infinite loops
-  let success = false;
-  let retries = 0;
-  const MAX_RETRIES = 100;
-
-  while (!success && retries < MAX_RETRIES) {
-    success = generateFullBoard();
-    retries++;
-  }
-
-  if (!success) {
-    // If we couldn't generate a valid board after many attempts,
-    // generate a simpler board that might not be fully filled
-    console.warn("Could not generate full board, using partial board");
-    generatePartialBoard();
+  // Build a solvable, fully-filled board. If we cannot, show an error state.
+  const built = generateSolvableBoard();
+  if (!built) {
+    console.error("Could not build a solvable, fully-filled board.");
   }
 
   renderBoard();
@@ -235,6 +226,105 @@ function generatePartialBoard() {
   }
 }
 
+// Attempt to generate a full, solvable board where every arrow can exit.
+function generateSolvableBoard() {
+  const MAX_BOARD_TRIES = 150;
+  for (let attempt = 0; attempt < MAX_BOARD_TRIES; attempt++) {
+    // Try to generate a full board using the existing logic
+    let success = false;
+    let retries = 0;
+    const MAX_RETRIES = 100;
+    while (!success && retries < MAX_RETRIES) {
+      success = generateFullBoard();
+      retries++;
+    }
+    if (!success) {
+      console.warn("Full board generation failed, falling back to partial");
+      generatePartialBoard();
+    }
+
+    // Ensure every valid heart slot is filled with an arrow
+    const filled = forceFillMissingSlots();
+
+    // Build message mapping for reveal
+    buildMessageGrid();
+
+    // Validate that every arrow has a clear path out
+    if (filled && validateBoard()) {
+      return true;
+    }
+    // Otherwise, try again with a fresh board
+  }
+  return false;
+}
+
+// Guarantee that every valid heart cell has an arrow that can exit.
+// Missing slots get a valid direction/type if possible; returns true if all filled with valid paths.
+function forceFillMissingSlots() {
+  let allValid = true;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (HEART_SHAPE[y][x] === 1 && gridData[y][x] === null) {
+        let placed = false;
+        for (let type of [TYPE_STRAIGHT, TYPE_CURVE]) {
+          for (let dir = 0; dir < 4; dir++) {
+            if (checkPath(x, y, dir, type, true)) {
+              gridData[y][x] = { dir, type };
+              placed = true;
+              break;
+            }
+          }
+          if (placed) break;
+        }
+        if (!placed) {
+          allValid = false;
+        }
+      }
+    }
+  }
+  return allValid;
+}
+
+// Map each heart cell to a character in the message string
+function buildMessageGrid() {
+  messageGrid = Array(ROWS)
+    .fill(null)
+    .map(() => Array(COLS).fill(""));
+
+  // Collect valid positions in row-major order
+  const positions = [];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (HEART_SHAPE[y][x] === 1) positions.push({ x, y });
+    }
+  }
+
+  // Repeat the base message to cover all positions (minimize blanks)
+  const repeated = (BASE_MESSAGE + " ").repeat(
+    Math.ceil(positions.length / (BASE_MESSAGE.length + 1))
+  );
+  const chars = repeated.toUpperCase().split("").slice(0, positions.length);
+
+  positions.forEach((pos, idx) => {
+    messageGrid[pos.y][pos.x] = chars[idx] || " ";
+  });
+}
+
+// Verify that every placed arrow has a clear path to exit.
+function validateBoard() {
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (gridData[y][x] !== null) {
+        const obj = gridData[y][x];
+        if (!checkPath(x, y, obj.dir, obj.type, false)) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 /**
  * PATH FINDER
  * Straight: Checks vector 'dir'
@@ -299,13 +389,13 @@ function renderBoard() {
         arrow.dataset.dir = gridData[y][x].dir;
         arrow.dataset.type = gridData[y][x].type;
 
-        // --- FIX: ROTATION OFFSET ---
-        // Logic 1 (Right) needs to look like 0deg (Up)
-        // Logic 3 (Left) needs to look like 180deg (Down)
-        // Formula: (LogicDir * 90) - 90
-        let rot = gridData[y][x].dir * 90 - 90;
+        // Rotate SVG so the head points in the logical direction
+        // dir: 0=Up, 1=Right, 2=Down, 3=Left
+        let rot = gridData[y][x].dir * 90;
 
         arrow.style.setProperty("--rotation", `rotate(${rot}deg)`);
+        // Apply base rotation directly since CSS no longer handles it
+        arrow.style.transform = `rotate(${rot}deg)`;
 
         // Insert SVG based on type
         // Ensure we're comparing numbers correctly
@@ -348,11 +438,11 @@ function handleArrowClick(x, y, element) {
 
     element.classList.add("flying");
 
-    // --- FIX: MATCH RENDER ROTATION ---
-    // Ensure the flying arrow keeps the visual rotation we set in renderBoard
-    let rot = obj.dir * 90 - 90;
+    // Keep the same rotation used during render
+    let rot = obj.dir * 90;
 
-    // Apply Translation
+    // Apply translation along global exitDir while preserving rotation
+    // Order: translate first (world coords), then rotate to keep heading
     element.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg)`;
 
     // Remove from logical grid immediately
@@ -360,6 +450,7 @@ function handleArrowClick(x, y, element) {
 
     setTimeout(() => {
       if (element.parentNode) element.parentNode.removeChild(element);
+      revealLetter(x, y);
       isAnimating = false;
       checkWin();
     }, 500);
@@ -375,6 +466,20 @@ function handleArrowClick(x, y, element) {
       setTimeout(() => loseModal.classList.add("active"), 500);
     }
   }
+}
+
+// Replace a cleared cell with its message character
+function revealLetter(x, y) {
+  if (!messageGrid || !messageGrid[y] || messageGrid[y][x] === undefined)
+    return;
+  const idx = y * COLS + x;
+  const cell = gridEl.children[idx];
+  if (!cell || cell.classList.contains("empty")) return;
+
+  const char = messageGrid[y][x];
+  // Use non-breaking space to preserve spacing for blanks
+  const displayChar = char === " " ? "\u00A0" : char;
+  cell.innerHTML = `<div class="letter">${displayChar}</div>`;
 }
 
 function checkWin() {

@@ -103,13 +103,6 @@ body {
 .type-straight path { fill: var(--arrow-straight); }
 .type-curve path { fill: var(--arrow-curve); }
 
-/* --- Directional Rotations (Visual) --- */
-/* The logic assumes 0=Up. The SVGs are drawn pointing Up. */
-.arrow-container[data-dir="0"] { transform: rotate(-90deg); } /* Up */
-.arrow-container[data-dir="1"] { transform: rotate(0deg); }   /* Right */
-.arrow-container[data-dir="2"] { transform: rotate(90deg); }  /* Down */
-.arrow-container[data-dir="3"] { transform: rotate(180deg); } /* Left */
-
 /* --- Flying Animation --- */
 .arrow-container.flying {
     /* Ease-in makes it start slow and accelerate out */
@@ -117,6 +110,15 @@ body {
     opacity: 0;
     pointer-events: none;
     z-index: 100; /* Ensure it flies ABOVE neighbors */
+}
+
+/* Revealed message letters */
+.letter {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    user-select: none;
 }
 
 /* --- Shake Animation (Error) --- */
